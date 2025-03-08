@@ -37,7 +37,7 @@ def init_from_pretrained(model, config, device='cpu'):
     (PartSeg, Classification, etc.)
     """
     if config['backbone'] == 'pointnet2':
-        state_dict = torch.load(os.path.join('pretrained_models', 'pointnet2_cls_ssg.pth'), map_location=device)['model_state_dict']
+        state_dict = torch.load(os.path.join('pretrained_models', 'pointnet2_cls_ssg.pth'), map_location=device, weights_only=False)['model_state_dict']
         feature_encoder_state_dict = _filter_out_dict(state_dict, ['fc1.weight', 'fc1.bias', 'bn1.weight', 'bn1.bias', 'bn1.running_mean', 'bn1.running_var', 'bn1.num_batches_tracked', 'fc2.weight', 'fc2.bias', 'bn2.weight', 'bn2.bias', 'bn2.running_mean', 'bn2.running_var', 'bn2.num_batches_tracked', 'fc3.weight', 'fc3.bias'])
         model.load_state_dict(feature_encoder_state_dict, strict=False)
         return model
