@@ -448,6 +448,8 @@ def visualize_mesh_traj(meshfile,
     mesh_obj = pv.read(meshfile)
     plotter.add_mesh(mesh_obj)
 
+    visualize_sequence_traj(curr_traj, plotter=plotter, extra_data=extra_data, index=(0,0))
+
     if torch.is_tensor(curr_traj):
         curr_traj = curr_traj.cpu().detach().numpy()
 
