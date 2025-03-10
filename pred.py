@@ -82,26 +82,36 @@ def main():
     model.to(device)
     model.eval()
 
-    point_cloud = convert_mesh_to_pointcloud(config["mesh_file"], config["pc_points"])
+    normalization_factor = get_dataset_downscale_factor(config["dataset"])
+    expected_outdim = get_dim_traj_points(config['extra_data'])
+    centroid = get_mean_mesh(config["mesh_file"])
 
+    point_cloud = convert_mesh_to_pointcloud(config["mesh_file"], config["pc_points"], normalization_factor)
+
+    # Format point cloud as input of model
     point_cloud = torch.from_numpy(point_cloud)
     point_cloud = point_cloud.unsqueeze(0)
     point_cloud = point_cloud.to(device, dtype=torch.float)
     point_cloud = point_cloud.permute(0, 2, 1)
 
+    # Reverse normalization and center pairing
     traj_pred = model(point_cloud)[0].cpu().detach().numpy()
+    traj_pred = traj_pred.reshape(-1, expected_outdim)
+    traj_pred[:, :3] *= normalization_factor
+    traj_pred[:, :3] += centroid
 
-    visualize_sequence_traj(traj_pred, extra_data=config['extra_data'])
+    # Visualize trajectory
+    traj_pred = traj_pred.reshape(-1, expected_outdim * config["lambda_points"])
+    visualize_mesh_traj(config["mesh_file"], traj_pred, extra_data=config['extra_data'])
 
     if config["output_dir"]:
-        expected_outdim = get_dim_traj_points(config['extra_data'])
         traj_pred = traj_pred.reshape(-1, expected_outdim)
         traj_pred = remove_padding(traj_pred, config['extra_data'])
 
         mesh_filename = os.path.splitext(os.path.basename(config["mesh_file"]))[0]
         np.savetxt(os.path.join(config["output_dir"], run_name + "_" + mesh_filename + '.txt'), traj_pred)
 
-def convert_mesh_to_pointcloud(filename, pc_points):
+def convert_mesh_to_pointcloud(filename, pc_points, normalization_factor):
     v, f = pcu.load_mesh_vf(filename)
     f_i, bc = pcu.sample_mesh_poisson_disk(v, f, 10000)  # Num of points (not guaranteed), radius for poisson sampling
     points = pcu.interpolate_barycentric_coords(f, f_i, bc, v)
@@ -110,8 +120,7 @@ def convert_mesh_to_pointcloud(filename, pc_points):
     centroid = get_mean_mesh(filename) # np.mean(point_cloud, axis=0)
     points -= centroid
 
-    max_distance = get_max_distance(filename)
-    points /= max_distance
+    points /= normalization_factor
 
     assert points.shape[0] >= pc_points
     choice = np.random.choice(points.shape[0], pc_points, replace=False)  # Sub-sample point-cloud randomly
