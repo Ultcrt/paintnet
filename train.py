@@ -162,6 +162,7 @@ def main():
 
     single_sample = None
     best_eval_loss = sys.float_info.max
+    total_train_time = 0
     for epoch in range(args.epochs):
         start_ep_time = time.time()
         tot_loss = 0.0
@@ -202,8 +203,10 @@ def main():
         wandb.log({"TOT_epoch_train_loss": (tot_loss * 1.0 / data_count), "epoch": (epoch+1)})
         tot_loss_list = tot_loss_list * 1.0 / data_count
         loss_handler.log_on_wandb(tot_loss_list, epoch, wandb, suffix='_train_loss')
+        epoch_time = time.time() - start_ep_time
+        total_train_time += epoch_time
         print('[%d/%d] Epoch time: %s' % (
-            epoch+1, args.epochs, time.strftime("%M:%S", time.gmtime(time.time() - start_ep_time))), '| Epoch train loss: %.5f' % (tot_loss * 1.0 / data_count))
+            epoch+1, args.epochs, time.strftime("%M:%S", time.gmtime(epoch_time))), '| Epoch train loss: %.5f' % (tot_loss * 1.0 / data_count))
 
         if (epoch+1) % args.eval_freq == 0:
             torch.save(
@@ -229,7 +232,7 @@ def main():
                 shutil.copyfile(
                     src=os.path.join(save_dir, 'last_checkpoint.pth'),
                     dst=os.path.join(save_dir, 'best_model.pth'))
-
+    print("Total train time:", total_train_time)
 
     wandb.run.summary["best_epoch"] = best_epoch
     if args.overfitting:

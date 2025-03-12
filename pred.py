@@ -77,10 +77,12 @@ def main():
         print('\n\nWARNING! Falling back to best_model.pth as eval_ckpt has invalid name.\n\n')
         eval_checkpoint = torch.load(os.path.join(save_dir, 'best_model.pth'), map_location=torch.device(device))
 
+    pred_begin = time.time()
     model = get_model(config['backbone'], config=config)
     model.load_state_dict(eval_checkpoint['model'], strict=True)
     model.to(device)
     model.eval()
+    print("Prediction time:", time.time() - pred_begin)
 
     normalization_factor = get_dataset_downscale_factor(config["dataset"])
     expected_outdim = get_dim_traj_points(config['extra_data'])
